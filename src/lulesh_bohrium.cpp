@@ -599,7 +599,7 @@ void ApplyAccelerationBoundaryConditionsForNodes() {
     symmY = view_as(domain.m_ydd[_(0, sliceSize - 1)], sliceSize / size, size);
     symmY[_(0, sliceSize, (size+1)*(size+1))][_(0, -1)] = Real_t(0.0);
 
-    domain.m_zdd[0, size*(size+2)] = Real_t(0.0);
+    domain.m_zdd[_(0, size*(size+2), 1)] = Real_t(0.0);
 
     // printf("m_xdd: %d, m_symmX: %d", domain.m_xdd.len(), domain.m_symmX.len());
     // std::cout << "Values: " <<  domain.m_symmX << std::endl;
