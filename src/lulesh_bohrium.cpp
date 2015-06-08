@@ -187,6 +187,7 @@ public:
             if ((clv < 0) || (clv > numElem*8)) {
                 fprintf(stderr,
                         "AllocateNodeElemIndexes(): nodeElemCornerList entry out of range!\n");
+                printf("Fuck me i am out of here! ~190\n");
                 exit(1);
             }
         }
@@ -1487,19 +1488,23 @@ void CalcHourglassControlForElems(multi_array<Real_t>& determ, Real_t hgcoef) {
 		}
 
 		determ[i] = domain.m_volo[i] * domain.m_v[i];
-		if (scalar<Real_t>(domain.m_v[i]) <= Real_t(0.0))
+		if (scalar<Real_t>(domain.m_v[i]) <= Real_t(0.0)) {
+            printf("Fuck me i am out of here! ~1491\n");
 			exit(VolumeError) ;
+        }
     }
 
     if (hgcoef > Real_t(0.))
 		CalcFBHourglassForceForElems(determ,x8n,y8n,z8n,dvdx,dvdy,dvdz,hgcoef);
 
+    printf("HELLO 1\n");
     Release(&z8n);
 	Release(&y8n);
 	Release(&x8n);
 	Release(&dvdz);
 	Release(&dvdy);
 	Release(&dvdx);
+    printf("HELLO 2\n");
 }
 
 static inline
@@ -1523,12 +1528,15 @@ void CalcVolumeForceForElems() {
         IntegrateStressForElems(sigxx, sigyy, sigzz,
                                 determ, domain.numElem());
 
-        if (scalar(sum(as<Real_t>(determ <= Real_t(0.0)))))
+        if (scalar(sum(as<Real_t>(determ <= Real_t(0.0))))) {
+            printf("Fuck me i am out of here! ~1531\n");
             exit(VolumeError);
+        }
 
         printf("CalcHourglassControlForElems\n");
         CalcHourglassControlForElems(determ, domain.hgcoef());
     }
+    printf("Bahh\n");
 }
 
 static inline
@@ -1768,8 +1776,10 @@ void CalcLagrangeElements(Real_t deltatime) {
         domain.m_dyy -= vdovthird;
         domain.m_dzz -= vdovthird;
 
-        if (scalar(sum(as<Real_t>(domain.m_vnew <= Real_t(0.0)))))
+        if (scalar(sum(as<Real_t>(domain.m_vnew <= Real_t(0.0))))) {
+            printf("Fuck me i am out of here! ~1779\n");
             exit(VolumeError);
+        }
     }
 }
 
@@ -2103,8 +2113,10 @@ void CalcQForElems() {
     Index_t numElem = domain.numElem();
 
     if (numElem != 0) {
-        if (scalar(sum(as<Real_t>(domain.m_q > domain.qstop()))))
+        if (scalar(sum(as<Real_t>(domain.m_q > domain.qstop())))) {
+            printf("Fuck me i am out of here! ~2116\n");
             exit(QStopError);
+        }
     }
 }
 
@@ -2292,8 +2304,10 @@ void ApplyMaterialPropertiesForElems() {
                           + as<Real_t>(domain.m_v <= eosvmax)*domain.m_v);
         }
 
-        if (scalar(sum(as<Real_t>(domain.m_v <= 0.))))
+        if (scalar(sum(as<Real_t>(domain.m_v <= 0.)))) {
+            printf("Fuck me i am out of here! ~2307\n");
             exit(VolumeError);
+        }
 
         printf("EvalEOSForElems\n");
         EvalEOSForElems(vnewc, length);
@@ -2715,6 +2729,7 @@ int main(int argc, char *argv[]){
 
     printf("Starting\n");
     while(domain.time() < domain.stoptime() ) {
+        printf("Entry...\n");
         if (domain.cycle() == 306)
 			break;
         TimeIncrement();
@@ -2726,9 +2741,10 @@ int main(int argc, char *argv[]){
 #if LULESH_SHOW_PROGRESS
         printf("time = %e, dt=%e\n",
                double(domain.time()), double(domain.deltatime()) ) ;
+        printf("Exit...\n");
 #endif
     }
-
+    printf("Stopping...\n");
     gettimeofday(&end, NULL);
 	double elapsed_time = double(end.tv_sec - start.tv_sec) + double(end.tv_usec - start.tv_usec) *1e-6;
 
