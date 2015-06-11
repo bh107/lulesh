@@ -12,12 +12,23 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
+#if defined(_OPENMP)
+#include <omp.h>
+#else
+inline int omp_get_max_threads() { return 1; }
+inline int omp_get_thread_num()  { return 0; }
+inline int omp_get_num_threads() { return 1; }
+#endif
+
 using namespace bxx;
 
 enum { VolumeError = -1, QStopError = -2 };
 
 /* Progress */
 #define LULESH_SHOW_PROGRESS 0
+
+/* Development */
+#define DEVELOPMENT 0
 
 /* Boundary conditions */
 #define XI_M        0x003
@@ -51,7 +62,7 @@ enum { VolumeError = -1, QStopError = -2 };
 typedef float real4;
 typedef double real8;
 typedef long double real10;
-typedef uint64_t Index_t;
+typedef int Index_t;
 typedef real8 Real_t;
 typedef int Int_t;
 
@@ -109,13 +120,14 @@ public:
 
         m_e = zeros<Real_t>(size);
 
-        m_p = ones<Real_t>(size);
-        m_q = ones<Real_t>(size);
+        m_p = zeros<Real_t>(size);
+        m_q = zeros<Real_t>(size);
         m_ql = zeros<Real_t>(size);
         m_qq = zeros<Real_t>(size);
 
         m_v = ones<Real_t>(size);
         m_volo = zeros<Real_t>(size);
+
         m_delv = zeros<Real_t>(size);
         m_vdov = zeros<Real_t>(size);
 
@@ -187,7 +199,6 @@ public:
             if ((clv < 0) || (clv > numElem*8)) {
                 fprintf(stderr,
                         "AllocateNodeElemIndexes(): nodeElemCornerList entry out of range!\n");
-                printf("Fuck me i am out of here! ~190\n");
                 exit(1);
             }
         }
@@ -285,77 +296,6 @@ public:
 
     /* mass */
     multi_array<Real_t> m_elemMass;
-
-
-    /* Node-centered */
-    Real_t elem_x(Index_t idx)    { return scalar<Real_t>(m_x[idx]); }
-    Real_t elem_y(Index_t idx)    { return scalar<Real_t>(m_y[idx]); }
-    Real_t elem_z(Index_t idx)    { return scalar<Real_t>(m_z[idx]); }
-
-    Real_t elem_xd(Index_t idx)   { return scalar<Real_t>(m_xd[idx]); }
-    Real_t elem_yd(Index_t idx)   { return scalar<Real_t>(m_yd[idx]); }
-    Real_t elem_zd(Index_t idx)   { return scalar<Real_t>(m_zd[idx]); }
-
-    Real_t elem_xdd(Index_t idx)  { return scalar<Real_t>(m_xdd[idx]); }
-    Real_t elem_ydd(Index_t idx)  { return scalar<Real_t>(m_ydd[idx]); }
-    Real_t elem_zdd(Index_t idx)  { return scalar<Real_t>(m_zdd[idx]); }
-
-    Real_t elem_fx(Index_t idx)   { return scalar<Real_t>(m_fx[idx]); }
-    Real_t elem_fy(Index_t idx)   { return scalar<Real_t>(m_fy[idx]); }
-    Real_t elem_fz(Index_t idx)   { return scalar<Real_t>(m_fz[idx]); }
-
-    Real_t elem_nodalMass(Index_t idx) { return scalar<Real_t>(m_nodalMass[idx]); }
-
-    Index_t elem_symmX(Index_t idx) { return scalar<Index_t>(m_symmX[idx]); }
-    Index_t elem_symmY(Index_t idx) { return scalar<Index_t>(m_symmY[idx]); }
-    Index_t elem_symmZ(Index_t idx) { return scalar<Index_t>(m_symmZ[idx]); }
-
-    Index_t elem_nodeElemCount(Index_t idx)    { return scalar<Index_t>(m_nodeElemCount[idx]); }
-    Index_t elem_nodeElemStart(Index_t idx)    { return scalar<Index_t>(m_nodeElemStart[idx]); }
-    Index_t elem_nodeElemCornerList(Index_t i) { return scalar<Index_t>(m_nodeElemCornerList[i]); }
-
-    /* Element-centered */
-    // Index_t* nodelist(Index_t idx)         { return &m_nodelist[Index_t(8)*idx]; }
-
-    Index_t  elem_lxim(Index_t idx)   { return scalar<Index_t>(m_lxim[idx]); }
-    Index_t  elem_lxip(Index_t idx)   { return scalar<Index_t>(m_lxip[idx]); }
-    Index_t  elem_letam(Index_t idx)  { return scalar<Index_t>(m_letam[idx]); }
-    Index_t  elem_letap(Index_t idx)  { return scalar<Index_t>(m_letap[idx]); }
-    Index_t  elem_lzetam(Index_t idx) { return scalar<Index_t>(m_lzetam[idx]); }
-    Index_t  elem_lzetap(Index_t idx) { return scalar<Index_t>(m_lzetap[idx]); }
-
-    Int_t  elem_elemBC(Index_t idx) { return scalar<Int_t>(m_elemBC[idx]); }
-
-    Real_t elem_dxx(Index_t idx)  { return scalar<Real_t>(m_dxx[idx]); }
-    Real_t elem_dyy(Index_t idx)  { return scalar<Real_t>(m_dyy[idx]); }
-    Real_t elem_dzz(Index_t idx)  { return scalar<Real_t>(m_dzz[idx]); }
-
-    Real_t elem_delv_xi(Index_t idx)    { return scalar<Real_t>(m_delv_xi[idx]); }
-    Real_t elem_delv_eta(Index_t idx)   { return scalar<Real_t>(m_delv_eta[idx]); }
-    Real_t elem_delv_zeta(Index_t idx)  { return scalar<Real_t>(m_delv_zeta[idx]); }
-
-    Real_t elem_delx_xi(Index_t idx)    { return scalar<Real_t>(m_delx_xi[idx]); }
-    Real_t elem_delx_eta(Index_t idx)   { return scalar<Real_t>(m_delx_eta[idx]); }
-    Real_t elem_delx_zeta(Index_t idx)  { return scalar<Real_t>(m_delx_zeta[idx]); }
-
-    Real_t elem_e(Index_t idx)          { return scalar<Real_t>(m_e[idx]); }
-
-    Real_t elem_p(Index_t idx)          { return scalar<Real_t>(m_p[idx]); }
-    Real_t elem_q(Index_t idx)          { return scalar<Real_t>(m_q[idx]); }
-    Real_t elem_ql(Index_t idx)         { return scalar<Real_t>(m_ql[idx]); }
-    Real_t elem_qq(Index_t idx)         { return scalar<Real_t>(m_qq[idx]); }
-
-    Real_t elem_v(Index_t idx)          { return scalar<Real_t>(m_v[idx]); }
-    Real_t elem_volo(Index_t idx)       { return scalar<Real_t>(m_volo[idx]); }
-    Real_t elem_vnew(Index_t idx)       { return scalar<Real_t>(m_vnew[idx]); }
-    Real_t elem_delv(Index_t idx)       { return scalar<Real_t>(m_delv[idx]); }
-    Real_t elem_vdov(Index_t idx)       { return scalar<Real_t>(m_vdov[idx]); }
-
-    Real_t elem_arealg(Index_t idx) { return scalar<Real_t>(m_arealg[idx]); }
-
-    Real_t elem_ss(Index_t idx) { return scalar<Real_t>(m_ss[idx]); }
-
-    Real_t elem_elemMass(Index_t idx) { return scalar<Real_t>(m_elemMass[idx]); }
 
     /* Params */
     Real_t& dtfixed()              { return m_dtfixed; }
@@ -479,6 +419,65 @@ void Release(T **ptr)
 }
 
 static inline
+void printInfo(char name[]) {
+    Index_t numNode = domain.numNode();
+    printf("---- %s\n", name);
+
+    printf("fx: ");
+    for( Index_t gnode=0 ; gnode<numNode ; ++gnode )
+    	printf("%f, ", scalar<Real_t>(domain.m_fx[gnode]));
+    printf("\n\n");
+
+    printf("fy: ");
+    for( Index_t gnode=0 ; gnode<numNode ; ++gnode )
+    	printf("%f, ", scalar<Real_t>(domain.m_fy[gnode]));
+    printf("\n\n");
+
+    printf("fz: ");
+    for( Index_t gnode=0 ; gnode<numNode ; ++gnode )
+    	printf("%f, ", scalar<Real_t>(domain.m_fz[gnode]));
+    printf("\n\n");
+
+    printf("m_dxx: ");
+    for(Real_t i=0; i<domain.numElem(); i++)
+        printf("%f, ", scalar<Real_t>(domain.m_dxx[i]));
+    printf("\n\n");
+
+    printf("m_dyy: ");
+    for(Real_t i=0; i<domain.numElem(); i++)
+        printf("%f, ", scalar<Real_t>(domain.m_dyy[i]));
+    printf("\n\n");
+
+    printf("m_dzz: ");
+    for(Real_t i=0; i<domain.numElem(); i++)
+        printf("%f, ", scalar<Real_t>(domain.m_dzz[i]));
+    printf("\n\n");
+
+    printf("m_v: ");
+    for( Index_t gnode=0 ; gnode<numNode; ++gnode )
+        printf("%f, ", scalar<Real_t>(domain.m_v[gnode]));
+    printf("\n\n");
+
+    printf("m_vdov: ");
+    for( Index_t gnode=0 ; gnode<numNode; ++gnode )
+        printf("%f, ", scalar<Real_t>(domain.m_vdov[gnode]));
+    printf("\n\n");
+
+    printf("m_ss: ");
+    for( Index_t gnode=0 ; gnode<numNode; ++gnode )
+        printf("%f, ", scalar<Real_t>(domain.m_ss[gnode]));
+    printf("\n\n");
+
+    printf("m_arealg: ");
+    for( Index_t gnode=0 ; gnode<numNode; ++gnode )
+        printf("%f, ", scalar<Real_t>(domain.m_arealg[gnode]));
+    printf("\n\n");
+
+    printf("dthydro: %.20f\n", domain.dthydro());
+    printf("dtcourant: %.20f\n", domain.dtcourant());
+}
+
+static inline
 Real_t CalcElemVolume(const Real_t x0, const Real_t x1,
                       const Real_t x2, const Real_t x3,
                       const Real_t x4, const Real_t x5,
@@ -554,11 +553,9 @@ Real_t CalcElemVolume(const Real_t x0, const Real_t x1,
     TRIPLE_PRODUCT(dx14 + dx25, dx61, dx50,
                    dy14 + dy25, dy61, dy50,
                    dz14 + dz25, dz61, dz50);
-
 #undef TRIPLE_PRODUCT
 
     volume *= twelveth;
-
     return volume;
 }
 
@@ -591,69 +588,23 @@ void CalcVelocityForNodes(const Real_t dt, const Real_t u_cut) {
 
 static inline
 void ApplyAccelerationBoundaryConditionsForNodes() {
-    //TODO: Scatter
-    Real_t size = domain.sizeX();
-    domain.m_xdd[_(0, -size, size+1)] = Real_t(0.0);
-
-    Index_t sliceSize = domain.m_xdd.len() - (size*size) - (size+1);
-    multi_array<Real_t> symmY;
-    symmY = view_as(domain.m_ydd[_(0, sliceSize - 1)], sliceSize / size, size);
-    symmY[_(0, sliceSize, (size+1)*(size+1))][_(0, -1)] = Real_t(0.0);
-
-    domain.m_zdd[_(0, size*(size+2), 1)] = Real_t(0.0);
-
-    // printf("m_xdd: %d, m_symmX: %d", domain.m_xdd.len(), domain.m_symmX.len());
-    // std::cout << "Values: " <<  domain.m_symmX << std::endl;
-    //
-    // scatter(domain.m_xdd, zeros<Real_t>(domain.m_xdd.len()), domain.m_symmX);
-    // scatter(domain.m_ydd, zeros<Real_t>(domain.m_ydd.len()), domain.m_symmY);
-    // scatter(domain.m_zdd, zeros<Real_t>(domain.m_zdd.len()), domain.m_symmZ);
+    scatter(domain.m_xdd, zeros<Real_t>(domain.m_symmX.len()), as<uint64_t>(domain.m_symmX));
+    scatter(domain.m_ydd, zeros<Real_t>(domain.m_symmY.len()), as<uint64_t>(domain.m_symmY));
+    scatter(domain.m_zdd, zeros<Real_t>(domain.m_symmZ.len()), as<uint64_t>(domain.m_symmZ));
 }
 
 static inline
 void CalcAccelerationForNodes() {
-    printf("CalcAccelerationForNodes\n");
     domain.m_xdd(domain.m_fx / domain.m_nodalMass);
     domain.m_ydd(domain.m_fy / domain.m_nodalMass);
     domain.m_zdd(domain.m_fz / domain.m_nodalMass);
-
-    printf("fx: ");
-    for( Index_t gnode=0 ; gnode<domain.numNode() ; ++gnode )
-        printf("%f, ", scalar<Real_t>(domain.m_fx[gnode]));
-    printf("\n");
-    printf("fy: ");
-    for( Index_t gnode=0 ; gnode<domain.numNode() ; ++gnode )
-        printf("%f, ", scalar<Real_t>(domain.m_fy[gnode]));
-    printf("\n");
-    printf("fz: ");
-    for( Index_t gnode=0 ; gnode<domain.numNode() ; ++gnode )
-        printf("%f, ", scalar<Real_t>(domain.m_fz[gnode]));
-    printf("\n");
-
-    printf("m_xdd: ");
-    for( Index_t gnode=0 ; gnode<domain.numNode() ; ++gnode )
-        printf("%f, ", scalar<Real_t>(domain.m_xdd[gnode]));
-    printf("\n");
-    printf("m_ydd: ");
-    for( Index_t gnode=0 ; gnode<domain.numNode() ; ++gnode )
-        printf("%f, ", scalar<Real_t>(domain.m_ydd[gnode]));
-    printf("\n");
-    printf("m_zdd: ");
-    for( Index_t gnode=0 ; gnode<domain.numNode() ; ++gnode )
-        printf("%f, ", scalar<Real_t>(domain.m_zdd[gnode]));
-    printf("\n");
-
-    printf("m_nodalMass: ");
-    for( Index_t gnode=0 ; gnode<domain.numNode() ; ++gnode )
-        printf("%f, ", scalar<Real_t>(domain.m_nodalMass[gnode]));
-    printf("\n");
 }
 
 static inline
 void InitStressTermsForElems(multi_array<Real_t>& sigxx,
                              multi_array<Real_t>& sigyy,
                              multi_array<Real_t>& sigzz) {
-    sigxx(sigyy(sigzz(((Real_t)-1) * (domain.m_p - domain.m_q))));
+    sigxx(sigyy(sigzz((((Real_t)-1) * domain.m_p) - domain.m_q)));
 }
 
 static inline
@@ -840,12 +791,13 @@ void IntegrateStressForElems(multi_array<Real_t>& sigxx,
                              multi_array<Real_t>& sigzz,
                              multi_array<Real_t>& determ,
                              Index_t numElem) {
+//TODO: Optimize
     Index_t numElem8 = numElem * 8 ;
     Real_t *fx_elem = Allocate<Real_t>(numElem8) ;
     Real_t *fy_elem = Allocate<Real_t>(numElem8) ;
     Real_t *fz_elem = Allocate<Real_t>(numElem8) ;
 
-//TODO: Optimize
+#pragma omp parallel for firstprivate(numElem)
     for(Index_t k=0 ; k<numElem ; ++k) {
         Real_t B[3][8];
 		Real_t x_local[8];
@@ -867,7 +819,7 @@ void IntegrateStressForElems(multi_array<Real_t>& sigxx,
         Real_t stress_yy = scalar<Real_t>(sigyy[k]);
         Real_t stress_zz = scalar<Real_t>(sigzz[k]);
 
-        fx_elem[k8+0] = -( stress_xx * B[0][0] );
+        fx_elem[k8+0]    = -( stress_xx * B[0][0] );
         fx_elem[k8+1] = -( stress_xx * B[0][1] );
     	fx_elem[k8+2] = -( stress_xx * B[0][2] );
     	fx_elem[k8+3] = -( stress_xx * B[0][3] );
@@ -895,7 +847,10 @@ void IntegrateStressForElems(multi_array<Real_t>& sigxx,
     	fz_elem[k8+7] = -( stress_zz * B[2][7] );
     }
 
-    for(Index_t gnode=0 ; gnode<domain.numNode() ; ++gnode) {
+    Index_t numNode = domain.numNode() ;
+
+#pragma omp parallel for firstprivate(numNode)
+    for(Index_t gnode=0 ; gnode<numNode ; ++gnode) {
         Index_t count = scalar<Index_t>(domain.m_nodeElemCount[gnode]);
         Index_t start = scalar<Index_t>(domain.m_nodeElemStart[gnode]);
         Real_t fx = Real_t(0.0);
@@ -911,18 +866,6 @@ void IntegrateStressForElems(multi_array<Real_t>& sigxx,
         domain.m_fy[gnode] = fy;
         domain.m_fz[gnode] = fz;
     }
-
-    printf("m_fx:");
-	for (Index_t i = 0 ; i < domain.numNode() ; ++i)
-		printf("%f," , scalar<Real_t>(domain.m_fx[i]));
-	printf("\nm_fy:");
-	for (Index_t i = 0 ; i < domain.numNode() ; ++i)
-		printf("%f," , scalar<Real_t>(domain.m_fy[i]));
-    printf("\nm_fz:");
-	for (Index_t i = 0 ; i < domain.numNode() ; ++i)
-		printf("%f," , scalar<Real_t>(domain.m_fz[i]));
-	printf("\n");
-
     Release(&fz_elem);
 	Release(&fy_elem);
 	Release(&fx_elem);
@@ -1158,7 +1101,6 @@ void CalcFBHourglassForceForElems(multi_array<Real_t>& determ,
 								  Real_t *dvdx, Real_t *dvdy, Real_t *dvdz,
 								  Real_t hourg) {
 //TODO: Optimize
-    // printf("CalcFBHourglassForceForElems\n");
     Index_t numElem = domain.numElem();
     Index_t numElem8 = numElem * 8;
     Real_t *fx_elem = Allocate<Real_t>(numElem8) ;
@@ -1204,6 +1146,7 @@ void CalcFBHourglassForceForElems(multi_array<Real_t>& determ,
     /*    compute the hourglass modes */
 
 
+#pragma omp parallel for firstprivate(numElem, hourg)
     for(Index_t i2=0; i2<numElem; ++i2) {
         Real_t *fx_local, *fy_local, *fz_local;
         Real_t hgfx[8], hgfy[8], hgfz[8] ;
@@ -1352,7 +1295,10 @@ void CalcFBHourglassForceForElems(multi_array<Real_t>& determ,
 		fz_local[7] = hgfz[7];
     }
 
-    for( Index_t gnode=0 ; gnode<domain.numNode() ; ++gnode ) {
+    Index_t numNode = domain.numNode();
+
+#pragma omp parallel for firstprivate(numNode)
+    for(Index_t gnode=0; gnode<numNode; ++gnode) {
         Index_t count = scalar<Index_t>(domain.m_nodeElemCount[gnode]);
         Index_t start = scalar<Index_t>(domain.m_nodeElemStart[gnode]);
         Real_t fx = Real_t(0.0);
@@ -1372,19 +1318,6 @@ void CalcFBHourglassForceForElems(multi_array<Real_t>& determ,
     Release(&fz_elem);
 	Release(&fy_elem);
 	Release(&fx_elem);
-
-    printf("fx: ");
-    for( Index_t gnode=0 ; gnode<domain.numNode() ; ++gnode )
-        printf("%f, ", scalar<Real_t>(domain.m_fx[gnode]));
-    printf("\n");
-    printf("fy: ");
-    for( Index_t gnode=0 ; gnode<domain.numNode() ; ++gnode )
-        printf("%f, ", scalar<Real_t>(domain.m_fy[gnode]));
-    printf("\n");
-    printf("fz: ");
-    for( Index_t gnode=0 ; gnode<domain.numNode() ; ++gnode )
-        printf("%f, ", scalar<Real_t>(domain.m_fz[gnode]));
-    printf("\n");
 }
 
 static inline
@@ -1458,6 +1391,7 @@ void CalcElemVolumeDerivative(Real_t dvdx[8],
 
 static inline
 void CalcHourglassControlForElems(multi_array<Real_t>& determ, Real_t hgcoef) {
+//TODO: Optimize (Split to multiple for-loop to show that vectorization is possible)
 	Index_t numElem = domain.numElem();
     Real_t *dvdx = Allocate<Real_t>(numElem * 8);
 	Real_t *dvdy = Allocate<Real_t>(numElem * 8);
@@ -1466,8 +1400,7 @@ void CalcHourglassControlForElems(multi_array<Real_t>& determ, Real_t hgcoef) {
 	Real_t *y8n  = Allocate<Real_t>(numElem * 8);
 	Real_t *z8n  = Allocate<Real_t>(numElem * 8);
 
-//TODO: Optimize
-
+#pragma omp parallel for firstprivate(numElem)
     for (Index_t i=0 ; i<numElem ; ++i) {
         Real_t  x1[8],  y1[8],  z1[8];
         Real_t pfx[8], pfy[8], pfz[8];
@@ -1487,24 +1420,23 @@ void CalcHourglassControlForElems(multi_array<Real_t>& determ, Real_t hgcoef) {
 			z8n[jj]  = z1[ii];
 		}
 
-		determ[i] = domain.m_volo[i] * domain.m_v[i];
-		if (scalar<Real_t>(domain.m_v[i]) <= Real_t(0.0)) {
-            printf("Fuck me i am out of here! ~1491\n");
-			exit(VolumeError) ;
-        }
+#if DEVELOPMENT
+		if (scalar<Real_t>(domain.m_v[i]) <= Real_t(0.0))
+            exit(VolumeError) ;
+#endif
     }
+
+    determ = domain.m_volo*domain.m_v;
 
     if (hgcoef > Real_t(0.))
 		CalcFBHourglassForceForElems(determ,x8n,y8n,z8n,dvdx,dvdy,dvdz,hgcoef);
 
-    printf("HELLO 1\n");
     Release(&z8n);
 	Release(&y8n);
 	Release(&x8n);
 	Release(&dvdz);
 	Release(&dvdy);
 	Release(&dvdx);
-    printf("HELLO 2\n");
 }
 
 static inline
@@ -1521,22 +1453,16 @@ void CalcVolumeForceForElems() {
         sigzz = zeros<Real_t>(numElem);
         determ = zeros<Real_t>(numElem);
 
-        printf("InitStressTermsForElems\n");
         InitStressTermsForElems(sigxx, sigyy, sigzz);
-
-        printf("IntegrateStressForElems\n");
         IntegrateStressForElems(sigxx, sigyy, sigzz,
                                 determ, domain.numElem());
 
-        if (scalar(sum(as<Real_t>(determ <= Real_t(0.0))))) {
-            printf("Fuck me i am out of here! ~1531\n");
+#if DEVELOPMENT
+        if (scalar(sum(as<Real_t>(determ <= Real_t(0.0)))))
             exit(VolumeError);
-        }
-
-        printf("CalcHourglassControlForElems\n");
+#endif
         CalcHourglassControlForElems(determ, domain.hgcoef());
     }
-    printf("Bahh\n");
 }
 
 static inline
@@ -1548,7 +1474,6 @@ void CalcForceForNodes() {
     domain.m_fz = zeros<Real_t>(numNode);
 
     /* Calcforce calls partial, force, hourq */
-    printf("CalcVolumeForceForElems\n");
     CalcVolumeForceForElems();
 }
 
@@ -1556,21 +1481,16 @@ static inline
 void LagrangeNodal() {
     const Real_t delt = domain.deltatime() ;
 
-    printf("CalcForceForNodes\n");
     CalcForceForNodes();
 
-    printf("CalcAccelerationForNodes\n");
     CalcAccelerationForNodes();
 
-    printf("ApplyAccelerationBoundaryConditionsForNodes\n");
     ApplyAccelerationBoundaryConditionsForNodes();
 
-    printf("CalcVelocityForNodes\n");
+
     CalcVelocityForNodes(delt, domain.u_cut());
 
-    printf("CalcPositionForNodes\n");
     CalcPositionForNodes(delt);
-
     return;
 }
 
@@ -1645,7 +1565,6 @@ void CalcElemVelocityGrandient(const Real_t* const xvel,
 							   const Real_t detJ,
 							   Real_t* const d) {
 	const Real_t inv_detJ = Real_t(1.0) / detJ ;
-	Real_t dyddx, dxddy, dzddx, dxddz, dzddy, dyddz;
 	const Real_t* const pfx = b[0];
 	const Real_t* const pfy = b[1];
 	const Real_t* const pfz = b[2];
@@ -1654,57 +1573,23 @@ void CalcElemVelocityGrandient(const Real_t* const xvel,
 					   + pfx[1] * (xvel[1]-xvel[7])
 					   + pfx[2] * (xvel[2]-xvel[4])
 					   + pfx[3] * (xvel[3]-xvel[5]) );
-
-	d[1] = inv_detJ * ( pfy[0] * (yvel[0]-yvel[6])
+    d[1] = inv_detJ * ( pfy[0] * (yvel[0]-yvel[6])
 					   + pfy[1] * (yvel[1]-yvel[7])
 					   + pfy[2] * (yvel[2]-yvel[4])
 					   + pfy[3] * (yvel[3]-yvel[5]) );
-
-	d[2] = inv_detJ * ( pfz[0] * (zvel[0]-zvel[6])
+    d[2] = inv_detJ * ( pfz[0] * (zvel[0]-zvel[6])
 					   + pfz[1] * (zvel[1]-zvel[7])
 					   + pfz[2] * (zvel[2]-zvel[4])
 					   + pfz[3] * (zvel[3]-zvel[5]) );
-
-	dyddx  = inv_detJ * ( pfx[0] * (yvel[0]-yvel[6])
-						 + pfx[1] * (yvel[1]-yvel[7])
-						 + pfx[2] * (yvel[2]-yvel[4])
-						 + pfx[3] * (yvel[3]-yvel[5]) );
-
-	dxddy  = inv_detJ * ( pfy[0] * (xvel[0]-xvel[6])
-						 + pfy[1] * (xvel[1]-xvel[7])
-						 + pfy[2] * (xvel[2]-xvel[4])
-						 + pfy[3] * (xvel[3]-xvel[5]) );
-
-	dzddx  = inv_detJ * ( pfx[0] * (zvel[0]-zvel[6])
-						 + pfx[1] * (zvel[1]-zvel[7])
-						 + pfx[2] * (zvel[2]-zvel[4])
-						 + pfx[3] * (zvel[3]-zvel[5]) );
-
-	dxddz  = inv_detJ * ( pfz[0] * (xvel[0]-xvel[6])
-						 + pfz[1] * (xvel[1]-xvel[7])
-						 + pfz[2] * (xvel[2]-xvel[4])
-						 + pfz[3] * (xvel[3]-xvel[5]) );
-
-	dzddy  = inv_detJ * ( pfy[0] * (zvel[0]-zvel[6])
-						 + pfy[1] * (zvel[1]-zvel[7])
-						 + pfy[2] * (zvel[2]-zvel[4])
-						 + pfy[3] * (zvel[3]-zvel[5]) );
-
-	dyddz  = inv_detJ * ( pfz[0] * (yvel[0]-yvel[6])
-						 + pfz[1] * (yvel[1]-yvel[7])
-						 + pfz[2] * (yvel[2]-yvel[4])
-						 + pfz[3] * (yvel[3]-yvel[5]) );
-	// d[5]  = Real_t( .5) * ( dxddy + dyddx );
-	// d[4]  = Real_t( .5) * ( dxddz + dzddx );
-	// d[3]  = Real_t( .5) * ( dzddy + dyddz );
 }
 
 static inline
 void CalcKinematicsForElems(Index_t numElem, Real_t dt) {
 //TODO: Optimize
+#pragma omp parallel for firstprivate(numElem, dt)
     for(Index_t k=0 ; k<numElem ; ++k) {
         Real_t B[3][8];
-        Real_t D[6];
+        Real_t D[3];
 		Real_t x_local[8];
 		Real_t y_local[8];
 		Real_t z_local[8];
@@ -1726,7 +1611,6 @@ void CalcKinematicsForElems(Index_t numElem, Real_t dt) {
         relativeVolume = volume / scalar<Real_t>(domain.m_volo[k]);
         domain.m_vnew[k] = relativeVolume;
 		domain.m_delv[k] = relativeVolume - domain.m_v[k];
-
         domain.m_arealg[k] = CalcElemCharacteristicLength(x_local, y_local, z_local, volume);
 
         for( Index_t lnode=0 ; lnode<8 ; ++lnode ) {
@@ -1744,11 +1628,8 @@ void CalcKinematicsForElems(Index_t numElem, Real_t dt) {
 		}
 
         detJ = CalcElemShapeFunctionDerivatives(x_local, y_local, z_local, B);
-        // printf("detJ: %d\n", detJ);
-
 		CalcElemVelocityGrandient(xd_local, yd_local, zd_local, B, detJ, D);
 
-        // printf("D: \t[0] = %f, \t[1] = %f, \t[2] = %f\n", D[0],D[1],D[2]);
         domain.m_dxx[k] = D[0];
 		domain.m_dyy[k] = D[1];
 		domain.m_dzz[k] = D[2];
@@ -1763,23 +1644,20 @@ void CalcLagrangeElements(Real_t deltatime) {
 
         multi_array<Real_t> vdov;
         vdov = domain.m_dxx+domain.m_dyy+domain.m_dzz;
-        // std::cout << "dxx: " <<  domain.m_dxx << std::endl;
-        // std::cout << "dyy: " <<  domain.m_dyy << std::endl;
-        // std::cout << "dzz: " <<  domain.m_dzz << std::endl;
 
         multi_array<Real_t> vdovthird;
         vdovthird = vdov/Real_t(3.0);
 
         domain.m_vdov(vdov);
-        // std::cout << "vdov: " <<  domain.m_vdov << std::endl;
+
         domain.m_dxx -= vdovthird;
         domain.m_dyy -= vdovthird;
         domain.m_dzz -= vdovthird;
 
-        if (scalar(sum(as<Real_t>(domain.m_vnew <= Real_t(0.0))))) {
-            printf("Fuck me i am out of here! ~1779\n");
+#if DEVELOPMENT
+        if (scalar(sum(as<Real_t>(domain.m_vnew <= Real_t(0.0)))))
             exit(VolumeError);
-        }
+#endif
     }
 }
 
@@ -1787,7 +1665,11 @@ static inline
 void CalcMonotonicQGradientsForElems() {
 //TODO: Optimize
 #define SUM4(a,b,c,d) (a + b + c + d)
-	for (Index_t i = 0 ; i < domain.numElem() ; ++i ) {
+
+    Index_t numElem = domain.numElem();
+
+#pragma omp parallel for firstprivate(numElem)
+	for (Index_t i = 0 ; i <  numElem; ++i ) {
 		const Real_t ptiny = Real_t(1.e-36) ;
 		Real_t ax,ay,az;
 		Real_t dxv,dyv,dzv;
@@ -1944,23 +1826,14 @@ void CalcMonotonicQRegionForElems(Real_t qlc_monoq,
 
     multi_array<Int_t> bcMask;
     bcMask = domain.m_elemBC & XI_M;
-    delvm(as<Real_t>(bcMask == 0)*gather(delvm, domain.m_delv_xi, domain.m_lxim)
+    delvm(as<Real_t>(bcMask == 0)*gather(delvm, domain.m_delv_xi, as<uint64_t>(domain.m_lxim))
                 + as<Real_t>(bcMask == XI_M_SYMM)*domain.m_delv_xi
                 + as<Real_t>(bcMask == XI_M_FREE)*Real_t(0.0));
 
     bcMask(domain.m_elemBC & XI_P);
-    delvp(as<Real_t>(bcMask == 0)*gather(delvp, domain.m_delv_xi, domain.m_lxip)
+    delvp(as<Real_t>(bcMask == 0)*gather(delvp, domain.m_delv_xi, as<uint64_t>(domain.m_lxip))
                 + as<Real_t>(bcMask == XI_P_SYMM)*domain.m_delv_xi
                 + as<Real_t>(bcMask == XI_P_FREE)*Real_t(0.0));
-    // delvm[_(1, -1)] = as<Real_t>(bcMask == 0 || bcMask == XI_M_SYMM)
-    //                     * domain.m_delv_xi[_(0, -2)];
-    // delvm[0] = as<Real_t>(bcMask == 0 || bcMask == XI_M_SYMM)*domain.m_delv_xi[0];
-    //
-    // bcMask = domain.m_elemBC & XI_P;
-    // delvp[_(0, -2)] = as<Real_t>(bcMask == 0 || bcMask == XI_P_SYMM)
-    //                     * domain.m_delv_xi[_(0, -2)];
-    // delvp[-1] = as<Real_t>(bcMask == 0 || bcMask == XI_P_SYMM)
-    //                 * domain.m_delv_xi[-1];
 
     delvm(delvm*norm);
     delvp(delvp*norm);
@@ -1977,28 +1850,16 @@ void CalcMonotonicQRegionForElems(Real_t qlc_monoq,
     phixi(as<Real_t>(phixi > monoq_max_slope)*monoq_max_slope + as<Real_t>(phixi <= monoq_max_slope)*phixi);
 
     /* phieta */
-    // Real_t sizeX = domain.sizeX();
     norm(Real_t(1.)/(domain.m_delv_eta+ptiny));
     bcMask(domain.m_elemBC & ETA_M);
-    delvm(as<Real_t>(bcMask == 0)*gather(delvm, domain.m_delv_eta, domain.m_letam)
+    delvm(as<Real_t>(bcMask == 0)*gather(delvm, domain.m_delv_eta, as<uint64_t>(domain.m_letam))
                 + as<Real_t>(bcMask == ETA_M_SYMM)*domain.m_delv_eta
                 + as<Real_t>(bcMask == ETA_M_FREE)*Real_t(0.0));
 
     bcMask(domain.m_elemBC & ETA_P);
-    delvp(as<Real_t>(bcMask == 0)*gather(delvp, domain.m_delv_eta, domain.m_letap)
+    delvp(as<Real_t>(bcMask == 0)*gather(delvp, domain.m_delv_eta, as<uint64_t>(domain.m_letap))
                 + as<Real_t>(bcMask == ETA_P_SYMM)*domain.m_delv_eta
                 + as<Real_t>(bcMask == ETA_P_FREE)*Real_t(0.0));
-    // delvm[_(0, sizeX, 1)] = as<Real_t>(bcMask == 0)*domain.m_delv_eta[_(0, sizeX, 1)]
-    //             + as<Real_t>(bcMask == ETA_M_SYMM)*domain.m_delv_eta
-    //             + as<Real_t>(bcMask == ETA_M_FREE)*Real_t(0.0);
-    // delvm[_(sizeX, -1, 1)] = as<Real_t>(bcMask == 0)*domain.m_delv_eta[_(0, domain.m_delv_eta.len()-sizeX, 1)]
-    //             + as<Real_t>(bcMask == ETA_M_SYMM)*domain.m_delv_eta
-    //             + as<Real_t>(bcMask == ETA_M_FREE)*Real_t(0.0);
-    //
-    // bcMask = domain.m_elemBC & ETA_P;
-    // delvp = as<Real_t>(bcMask == 0)*domain.m_delv_eta[_(domain.sizeX(), -1, 1)]
-    //             + as<Real_t>(bcMask == ETA_P_SYMM)*domain.m_delv_eta
-    //             + as<Real_t>(bcMask == ETA_P_FREE)*Real_t(0.0);
 
     delvm(delvm*norm);
     delvp(delvp*norm);
@@ -2015,34 +1876,16 @@ void CalcMonotonicQRegionForElems(Real_t qlc_monoq,
     phieta(as<Real_t>(phieta > monoq_max_slope)*monoq_max_slope + as<Real_t>(phieta <= monoq_max_slope)*phieta);
 
     /*  phizeta */
-    // Real_t sizeX2 = sizeX*sizeX;
     norm(Real_t(1.)/(domain.m_delv_zeta+ptiny));
     bcMask(domain.m_elemBC & ZETA_M);
-    delvm(as<Real_t>(bcMask == 0)*gather(delvm, domain.m_delv_zeta, domain.m_lzetam)
+    delvm(as<Real_t>(bcMask == 0)*gather(delvm, domain.m_delv_zeta, as<uint64_t>(domain.m_lzetam))
                 + as<Real_t>(bcMask == ZETA_M_SYMM)*domain.m_delv_zeta
                 + as<Real_t>(bcMask == ZETA_M_FREE)*Real_t(0.0));
 
     bcMask(domain.m_elemBC & ZETA_P);
-    delvp(as<Real_t>(bcMask == 0)*gather(delvp, domain.m_delv_zeta, domain.m_lzetap)
+    delvp(as<Real_t>(bcMask == 0)*gather(delvp, domain.m_delv_zeta, as<uint64_t>(domain.m_lzetap))
                 + as<Real_t>(bcMask == ZETA_P_SYMM)*domain.m_delv_zeta
                 + as<Real_t>(bcMask == ZETA_P_FREE)*Real_t(0.0));
-
-    // bcMask = domain.m_elemBC & ZETA_M;
-    // delvm[_(0, sizeX2, 1)] = as<Real_t>(bcMask == 0)*domain.m_delv_zeta[_(0, sizeX2, 1)]
-    //             + as<Real_t>(bcMask == ZETA_M_SYMM)*domain.m_delv_zeta
-    //             + as<Real_t>(bcMask == ZETA_M_FREE)*Real_t(0.0);
-    // delvm[_(sizeX2, -1, 1)] = as<Real_t>(bcMask == 0)*domain.m_delv_zeta[_(0, domain.m_delv_zeta.len()-sizeX2, 1)]
-    //             + as<Real_t>(bcMask == ZETA_M_SYMM)*domain.m_delv_zeta
-    //             + as<Real_t>(bcMask == ZETA_M_FREE)*Real_t(0.0);
-    //
-    // bcMask = domain.m_elemBC & ZETA_P;
-    // Real_t slice = domain.numElem() - sizeX2;
-    // delvp[_(0, slice, 1)] = as<Real_t>(bcMask == 0)*domain.m_delv_zeta[_(sizeX2, slice+sizeX2, 1)]
-    //             + as<Real_t>(bcMask == ZETA_P_SYMM)*domain.m_delv_zeta
-    //             + as<Real_t>(bcMask == ZETA_P_FREE)*Real_t(0.0);
-    // delvp[_(slice, -1, 1)] = as<Real_t>(bcMask == 0)*domain.m_delv_zeta[_(slice, -1, 1)]
-    //             + as<Real_t>(bcMask == ZETA_P_SYMM)*domain.m_delv_zeta
-    //             + as<Real_t>(bcMask == ZETA_P_FREE)*Real_t(0.0);
 
     delvm(delvm*norm);
     delvp(delvp*norm);
@@ -2102,22 +1945,17 @@ void CalcMonotonicQForElems() {
 static inline
 void CalcQForElems() {
     /* Calculate velocity gradients */
-    printf("CalcMonotonicQGradientsForElems\n");
     CalcMonotonicQGradientsForElems() ;
 
     /* Transfer veloctiy gradients in the first order elements */
-    printf("CalcMonotonicQForElems\n");
     CalcMonotonicQForElems() ;
 
     /* Don't allow excessive artificial viscosity */
-    Index_t numElem = domain.numElem();
-
-    if (numElem != 0) {
-        if (scalar(sum(as<Real_t>(domain.m_q > domain.qstop())))) {
-            printf("Fuck me i am out of here! ~2116\n");
+#if DEVELOPMENT
+    if (domain.numElem() != 0)
+        if (scalar(sum(as<Real_t>(domain.m_q > domain.qstop()))))
             exit(QStopError);
-        }
-    }
+#endif
 }
 
 static inline
@@ -2126,8 +1964,8 @@ void CalcSoundSpeedForElems(multi_array<Real_t>& vnewc, Real_t rho0,
                             multi_array<Real_t>& pbvc, multi_array<Real_t>& bvc) {
     multi_array<Real_t> ssTmp;
     ssTmp = (pbvc * enewc + vnewc * vnewc * bvc * pnewc) / rho0;
-    ssTmp(as<Real_t>(domain.m_ss <= Real_t(.111111e-36))*Real_t(.333333e-18)
-                + as<Real_t>(domain.m_ss > Real_t(.111111e-36))*sqrt(ssTmp));
+    ssTmp(as<Real_t>(ssTmp <= Real_t(.111111e-36))*Real_t(.333333e-18)
+                + as<Real_t>(ssTmp > Real_t(.111111e-36))*sqrt(ssTmp));
     domain.m_ss(ssTmp);
 }
 
@@ -2160,7 +1998,6 @@ void CalcEnergyForElems(multi_array<Real_t>& p_new, multi_array<Real_t>& e_new,
     multi_array<Real_t> pHalfStep;
     pHalfStep = zeros<Real_t>(domain.numElem());
 
-    // printf("CalcEnergyForElems\n");
     e_new(e_old-Real_t(0.5)*delvc*(p_old+q_old)+Real_t(0.5)*work);
     e_new(as<Real_t>(e_new < emin)*emin + as<Real_t>(e_new >= emin)*e_new);
 
@@ -2202,20 +2039,21 @@ void CalcEnergyForElems(multi_array<Real_t>& p_new, multi_array<Real_t>& e_new,
     CalcPressureForElems(p_new, bvc, pbvc, e_new, compression, vnewc,
 						 pmin, p_cut, eosvmax);
 
-    if (scalar(sum(as<Real_t>(delvc <= Real_t(0.))))) {
-//TODO: Maybe wrong
-        ssc((pbvc*e_new+vnewc*vnewc*bvc*p_new)/rho0);
-        ssc(as<Real_t>(ssc <= Real_t(.111111e-36))*Real_t(.333333e-18)
-                + as<Real_t>(ssc > Real_t(.111111e-36))*sqrt(ssc));
+    ssc((pbvc*e_new+vnewc*vnewc*bvc*p_new)/rho0);
+    ssc(as<Real_t>(ssc <= Real_t(.111111e-36))*Real_t(.333333e-18)
+            + as<Real_t>(ssc > Real_t(.111111e-36))*sqrt(ssc));
 
-        q_new(ssc*ql+qq);
-        q_new(as<Real_t>(abs(q_new >= q_cut))*q_new);
-    }
+    multi_array<bool> yesMask;
+    yesMask = delvc <= Real_t(0.);
+    multi_array<bool> noMask;
+    noMask = delvc > Real_t(0.);
+
+    q_new(as<Real_t>(yesMask)*(ssc*ql+qq) + as<Real_t>(noMask)*q_new);
+    q_new(as<Real_t>((yesMask && abs(q_new) >= q_cut) || noMask)*q_new);
 }
 
 static inline
 void EvalEOSForElems(multi_array<Real_t>& vnewc, Index_t length) {
-    // printf("EvalEOSForElems\n");
     multi_array<Real_t> e_old;
     e_old = domain.m_e;
 
@@ -2264,7 +2102,6 @@ void EvalEOSForElems(multi_array<Real_t>& vnewc, Index_t length) {
     multi_array<Real_t> pbvc;
     pbvc = zeros<Real_t>(length);
 
-    printf("CalcEnergyForElems\n");
     CalcEnergyForElems(p_new, e_new, q_new, bvc, pbvc,
   					   p_old, e_old,  q_old, compression, compHalfStep,
   					   vnewc, work,  delvc, domain.pmin(),
@@ -2275,7 +2112,6 @@ void EvalEOSForElems(multi_array<Real_t>& vnewc, Index_t length) {
     domain.m_e(e_new);
     domain.m_q(q_new);
 
-    printf("CalcSoundSpeedForElems\n");
     CalcSoundSpeedForElems(vnewc, domain.refdens(), e_new, p_new, pbvc, bvc);
 }
 
@@ -2304,156 +2140,65 @@ void ApplyMaterialPropertiesForElems() {
                           + as<Real_t>(domain.m_v <= eosvmax)*domain.m_v);
         }
 
-        if (scalar(sum(as<Real_t>(domain.m_v <= 0.)))) {
-            printf("Fuck me i am out of here! ~2307\n");
+#if DEVELOPMENT
+        if (scalar(sum(as<Real_t>(domain.m_v <= 0.))))
             exit(VolumeError);
-        }
-
-        printf("EvalEOSForElems\n");
+#endif
         EvalEOSForElems(vnewc, length);
     }
 }
 
 static inline
 void UpdateVolumesForElems() {
-    if (domain.numElem() != 0)
-        domain.m_v(as<Real_t>(abs(domain.m_vnew - Real_t(1.0)) >= domain.v_cut())*domain.m_vnew);
+    if (domain.numElem() != 0) {
+        multi_array<Real_t> abs_vnew;
+        abs_vnew = abs(domain.m_vnew - Real_t(1.0));
+        domain.m_v(as<Real_t>(abs_vnew < domain.v_cut())*Real_t(1.0) +
+                    as<Real_t>(abs_vnew >= domain.v_cut())*domain.m_vnew);
+    }
 }
 
 static inline
 void LagrangeElements() {
-    printf("CalcLagrangeElements\n");
     CalcLagrangeElements(domain.deltatime());
-
-    printf("CalcQForElems\n");
     CalcQForElems();
-
-    printf("ApplyMaterialPropertiesForElems\n");
     ApplyMaterialPropertiesForElems();
-
-    printf("UpdateVolumesForElems\n");
     UpdateVolumesForElems();
 }
 
 static inline
-void CalcCourantConstraintForElems()
-{
-    Real_t dtcourant = Real_t(1.0e+20) ;
-    Index_t   courant_elem = -1 ;
-    Real_t      qqc = domain.qqc() ;
-    Index_t length = domain.numElem() ;
+void CalcCourantConstraintForElems() {
+    Real_t qqc = domain.qqc() ;
+	Real_t qqc2 = Real_t(64.0) * qqc * qqc ;
 
-    Real_t  qqc2 = Real_t(64.0) * qqc * qqc ;
+    multi_array<Real_t> dtf;
+    dtf = domain.m_ss*domain.m_ss;
 
-    for (Index_t i = 0 ; i < length ; ++i) {
-        Index_t indx = i;
+    multi_array<Real_t> dtfConst;
+    dtfConst = dtf+qqc2*domain.m_arealg*domain.m_arealg*domain.m_vdov*domain.m_vdov;
+    dtf = as<Real_t>(domain.m_vdov < Real_t(0.))*dtfConst
+            + as<Real_t>(domain.m_vdov >= Real_t(0.))*dtf;
+    dtf = sqrt(dtf);
+    dtf = domain.m_arealg/dtf;
+    dtf = as<Real_t>(domain.m_vdov == Real_t(0.))*Real_t(1.0e+20)
+            + as<Real_t>(domain.m_vdov != Real_t(0.))*dtf;
 
-        Real_t dtf = scalar<Real_t>(domain.m_ss[indx] * domain.m_ss[indx]);
-
-        if (scalar<bool>(domain.m_vdov[indx] < Real_t(0.))) {
-
-            dtf = scalar<Real_t>(dtf
-            + qqc2 * domain.m_arealg[indx] * domain.m_arealg[indx]
-            * domain.m_vdov[indx] * domain.m_vdov[indx]);
-        }
-
-        dtf = SQRT(dtf) ;
-
-        dtf = scalar<Real_t>(domain.m_arealg[indx] / dtf);
-
-        /* determine minimum timestep with its corresponding elem */
-        if (scalar<bool>(domain.m_vdov[indx] != Real_t(0.))) {
-            if ( dtf < dtcourant ) {
-                dtcourant = dtf ;
-                courant_elem = indx ;
-            }
-        }
-    }
-
-    /* Don't try to register a time constraint if none of the elements
-     * were active */
-    if (courant_elem != -1) {
-        domain.dtcourant() = dtcourant ;
-        printf("dtcourant: %f\n", domain.dtcourant());
-    }
-
-    return ;
+    Real_t minDtf = scalar<Real_t>(min(dtf));
+    if (minDtf < Real_t(1.0e+20))
+        domain.dtcourant() = minDtf;
 }
 
 static inline
-void CalcHydroConstraintForElems()
-{
-    Real_t dthydro = Real_t(1.0e+20) ;
-    Index_t hydro_elem = -1 ;
-    Real_t dvovmax = domain.dvovmax() ;
-    Index_t length = domain.numElem() ;
+void CalcHydroConstraintForElems() {
+    multi_array<Real_t> dtdvov;
+    dtdvov = domain.dvovmax()/(abs(domain.m_vdov)+Real_t(1.e-20));
+    dtdvov = as<Real_t>(domain.m_vdov != Real_t(0.))*dtdvov
+                + as<Real_t>(domain.m_vdov == Real_t(0.))*Real_t(1.e+20);
 
-    for (Index_t i = 0 ; i < length ; ++i) {
-        Index_t indx = i;
-
-        if (scalar<bool>(domain.m_vdov[indx] != Real_t(0.))) {
-            Real_t dtdvov = dvovmax / (FABS(scalar<Real_t>(domain.m_vdov[indx])+Real_t(1.e-20))) ;
-            if ( dthydro > dtdvov ) {
-                dthydro = dtdvov ;
-                hydro_elem = indx ;
-            }
-        }
-    }
-
-    if (hydro_elem != -1) {
-        domain.dthydro() = dthydro ;
-        printf("dthydro: %f\n\n", domain.dthydro());
-    }
-
-    return ;
+    Real_t minDtdvov = scalar<Real_t>(min(dtdvov));
+    if (minDtdvov < Real_t(1.0e+20))
+        domain.dthydro() = minDtdvov;
 }
-
-// static inline
-// void CalcCourantConstraintForElems() {
-//     Real_t qqc = domain.qqc() ;
-// 	Real_t qqc2 = Real_t(64.0) * qqc * qqc ;
-//
-//     multi_array<Real_t> dtf;
-//     dtf = domain.m_ss*domain.m_ss;
-//
-//     multi_array<Real_t> dtfConst;
-//     dtfConst = dtf+qqc2*domain.m_arealg*domain.m_arealg*domain.m_vdov*domain.m_vdov;
-//     dtf = as<Real_t>(domain.m_vdov < Real_t(0.))*dtfConst
-//             + as<Real_t>(domain.m_vdov >= Real_t(0.))*dtf;
-//
-//     dtf = sqrt(dtf);
-//     dtf = domain.m_arealg/dtf;
-//     dtf = as<Real_t>(domain.m_vdov != Real_t(0.))*dtf
-//             + as<Real_t>(domain.m_vdov == Real_t(0.))*Real_t(1.e+20);
-//
-//     Real_t minDtf = scalar<Real_t>(min(dtf));
-//
-//     if (minDtf < Real_t(1.0e+20)) {
-//         domain.dtcourant() = minDtf;
-//         std::cout << "Values: " <<  dtf << std::endl;
-//         std::cout << "Minimum: " << bh_minimum_reduce(dtf, (int64_t)0) << std::endl;
-//         printf("dtcourant: %f\n", domain.dtcourant());
-//     }
-// }
-//
-// static inline
-// void CalcHydroConstraintForElems() {
-//     if (scalar(as<Real_t>(domain.m_vdov != Real_t(0.)))) {
-//         multi_array<Real_t> dtdvov;
-//         dtdvov = domain.dvovmax()/(abs(domain.m_vdov)+Real_t(1.e-20));
-//         dtdvov = as<Real_t>(domain.m_vdov != Real_t(0.))*dtdvov
-//                     + as<Real_t>(domain.m_vdov == Real_t(0.))*Real_t(1.e+20);
-//         Real_t minDtdvov = scalar<Real_t>(min(dtdvov));
-//
-//         if (minDtdvov < Real_t(1.0e+20)) {
-//             domain.dthydro() = minDtdvov;
-//
-//             std::cout << "Values: " <<  dtdvov << std::endl;
-//             std::cout << "Minimum: " << bh_minimum_reduce(dtdvov, (int64_t)-1) << std::endl;
-//             printf("dthydro: %f\n", domain.dthydro());
-//         }
-//     }
-// }
 
 static inline
 void CalcTimeConstraintsForElems() {
@@ -2466,22 +2211,13 @@ void CalcTimeConstraintsForElems() {
 
 static inline
 void LagrangeLeapFrog() {
-    /* calculate nodal forces, accelerations, velocities, positions, with
-     * applied boundary conditions and slide surface considerations */
     LagrangeNodal();
-    printf("LagrangeElements\n");
-
-    /* calculate element quantities (i.e. velocity gradient & q), and update
-     * material states */
     LagrangeElements();
-
     CalcTimeConstraintsForElems();
 }
 
 static inline
 void TimeIncrement() {
-    printf("C: %f, \tH: %f\n", domain.dtcourant(), domain.dthydro());
-
     if ((domain.dtfixed() <= Real_t(0.0))
             && (domain.cycle() != Int_t(0))) {
         Real_t ratio;
@@ -2520,13 +2256,10 @@ void TimeIncrement() {
 
     domain.time() += domain.deltatime();
 
-    printf("time = %e, dt = %e, stop = %e\n",
-           double(domain.time()), double(domain.deltatime()), double(domain.stoptime()));
     ++domain.cycle();
 }
 
 int main(int argc, char *argv[]){
-    printf("Main\n");
     Index_t edgeElems = atoi(argv[1]);
     Index_t edgeNodes = edgeElems+1;
 
@@ -2632,37 +2365,24 @@ int main(int argc, char *argv[]){
 
     /* initialize field data */
     for (Index_t i=0; i<domElems; ++i) {
-        Real_t x_local[8], y_local[8], z_local[8];
-        for(Index_t lnode=0; lnode<8; ++lnode) {
+		Real_t x_local[8], y_local[8], z_local[8] ;
+		for( Index_t lnode=0 ; lnode<8 ; ++lnode ) {
             Index_t gnode = scalar<Index_t>(domain.m_nodelist[Index_t(8)*i+lnode]);
-            x_local[lnode] = scalar<Real_t>(domain.m_x[gnode]);
-            y_local[lnode] = scalar<Real_t>(domain.m_y[gnode]);
-            z_local[lnode] = scalar<Real_t>(domain.m_z[gnode]);
-        }
+			x_local[lnode] = scalar<Real_t>(domain.m_x[gnode]);
+			y_local[lnode] = scalar<Real_t>(domain.m_y[gnode]);
+			z_local[lnode] = scalar<Real_t>(domain.m_z[gnode]);
+		}
 
-        printf("x_local: ");
-        for(Index_t lnode=0; lnode<8; ++lnode)
-            printf("%f, ", x_local[lnode]);
-        printf("\n");
-        printf("y_local: ");
-        for(Index_t lnode=0; lnode<8; ++lnode)
-            printf("%f, ", y_local[lnode]);
-        printf("\n");
-        printf("z_local: ");
-        for(Index_t lnode=0; lnode<8; ++lnode)
-            printf("%f, ", z_local[lnode]);
-        printf("\n");
+		// volume calculations
+		Real_t volume = CalcElemVolume(x_local, y_local, z_local );
 
-        // volume calculations
-        Real_t volume = CalcElemVolume(x_local, y_local, z_local);
-        printf("Volumen: %d\n", volume);
-        domain.m_volo[i] = volume;
-        domain.m_elemMass[i] = volume;
-        for (Index_t j=0; j<8; ++j) {
+        domain.m_volo[i] = volume ;
+		domain.m_elemMass[i] = volume ;
+		for (Index_t j=0; j<8; ++j) {
             Index_t idx = scalar<Index_t>(domain.m_nodelist[Index_t(8)*i+j]);
-            domain.m_nodalMass[idx] += volume / Real_t(8.0);
-        }
-    }
+			domain.m_nodalMass[idx] += volume / Real_t(8.0) ;
+		}
+	}
 
     /* deposit energy */
     domain.m_e[0] = Real_t(3.948746e+7);
@@ -2726,25 +2446,17 @@ int main(int argc, char *argv[]){
 
     timeval start, end;
 	gettimeofday(&start, NULL);
-
-    printf("Starting\n");
     while(domain.time() < domain.stoptime() ) {
-        printf("Entry...\n");
-        if (domain.cycle() == 306)
-			break;
         TimeIncrement();
-        // printf("LagrangeLeapFrog\n");
         LagrangeLeapFrog();
 
-        printf("--------------\n\n Wave: %d\n", domain.cycle());
 
 #if LULESH_SHOW_PROGRESS
-        printf("time = %e, dt=%e\n",
+        printf("time = %.20f, dt=%.20f\n",
                double(domain.time()), double(domain.deltatime()) ) ;
-        printf("Exit...\n");
 #endif
     }
-    printf("Stopping...\n");
+
     gettimeofday(&end, NULL);
 	double elapsed_time = double(end.tv_sec - start.tv_sec) + double(end.tv_usec - start.tv_usec) *1e-6;
 
