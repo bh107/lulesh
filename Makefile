@@ -1,6 +1,3 @@
-BENCH_SRC   = $(wildcard src/*.cpp)
-BENCHMARK   = $(subst .cpp,, $(subst src/,,$(BENCH_SRC)))
-
 #CXX=clang++-3.5
 CXX=g++
 DEBUG=
@@ -10,9 +7,13 @@ LIBS=-lm -L$(HOME)/.local/lib -lbh
 EXTRAS=
 INCLUDE+=-I$(HOME)/.local/include -I$(HOME)/.local/include/bohrium
 
-all: $(BENCHMARK)
+all: lulesh_bohrium lulesh_bohrium_v2
 
-$(BENCHMARK): $(BENCH_SRC)
+lulesh_bohrium: src/lulesh_bohrium.cpp
+	mkdir -p bin
+	$(CXX) $(UTILS) $(CXXFLAGS) $(INCLUDE) $< $(LIBS) $(EXTRAS) -o bin/$@ 
+
+lulesh_bohrium_v2: src/lulesh_bohrium_v2.cpp
 	mkdir -p bin
 	$(CXX) $(UTILS) $(CXXFLAGS) $(INCLUDE) $< $(LIBS) $(EXTRAS) -o bin/$@ 
 
