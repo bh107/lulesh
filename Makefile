@@ -1,8 +1,8 @@
 #CXX=clang++-3.5
 CXX=g++
 DEBUG=
-#CXXFLAGS=-Wall -Wextra -O3 -std=c++11 $(DEBUG)
-CXXFLAGS=-Wall -Wextra -O3 -std=c++11 -fopenmp $(DEBUG)
+CXXFLAGS=-Wall -Wextra -O3 -g -std=c++11 $(DEBUG)
+#CXXFLAGS=-Wall -Wextra -O3 -std=c++11 -fopenmp $(DEBUG)
 LIBS=-lm -L$(HOME)/.local/lib -lbh
 EXTRAS=
 INCLUDE+=-I$(HOME)/.local/include -I$(HOME)/.local/include/bohrium
