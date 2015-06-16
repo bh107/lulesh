@@ -178,8 +178,8 @@ public:
         for (Index_t i=1; i < numNode; ++i)
             m_nodeElemStart[i] = m_nodeElemStart[i-1]+m_nodeElemCount[i-1];
 
-        m_nodeElemCornerList = zeros<Index_t>(m_nodeElemStart[numNode-1]+
-                                              m_nodeElemStart[numNode-1]);
+        m_nodeElemCornerList = zeros<Index_t>(scalar<Index_t>(m_nodeElemStart[numNode-1]) +
+                                              scalar<Index_t>(m_nodeElemStart[numNode-1]));
 
         m_nodeElemCount = zeros<Index_t>(numNode);
 
