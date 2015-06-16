@@ -1,19 +1,22 @@
-ROOT=/root/.local
-HEADER=$(ROOT)/include/*
-CPPB_INCLUDE=$(ROOT)/bridge/cpp
-BIN_DIR = bin
+#CXX=clang++-3.5
+CXX=g++
+DEBUG=
+CXXFLAGS=-Wall -Wextra -O3 -g -std=c++11 $(DEBUG)
+#CXXFLAGS=-Wall -Wextra -O3 -std=c++11 -fopenmp $(DEBUG)
+LIBS=-lm -L$(HOME)/.local/lib -lbh
+EXTRAS=
+INCLUDE+=-I$(HOME)/.local/include -I$(HOME)/.local/include/bohrium
 
-CXX=clang++-3.5
-EXTRAS+=
-CXXFLAGS=-Wall -Wextra -pedantic -g -O2 -std=c++0x $(EXTRAS)
+all: lulesh_bohrium lulesh_bohrium_v2
 
-LIBS+=-L$(ROOT)/lib -lbh
-INCLUDE+=-I$(ROOT)/include -I$(ROOT)/include/bohrium
+lulesh_bohrium: src/lulesh_bohrium.cpp
+	mkdir -p bin
+	$(CXX) $(UTILS) $(CXXFLAGS) $(INCLUDE) $< $(LIBS) $(EXTRAS) -o bin/$@ 
 
-all : lulesh
+lulesh_bohrium_v2: src/lulesh_bohrium_v2.cpp
+	mkdir -p bin
+	$(CXX) $(UTILS) $(CXXFLAGS) $(INCLUDE) $< $(LIBS) $(EXTRAS) -o bin/$@ 
 
-lulesh : src/lulesh_bohrium.cpp $(HEADER)
-	$(CXX) $< -o bin/$@ -L$(ROOT)/core -I$(ROOT)/include -I$(CPPB_INCLUDE) $(INCLUDE) $(LIBS) -lbh $(LCFLAGS) $(CXXFLAGS) -lstdc++
-
-clean :
-	rm -f $(BIN_DIR)/* *.o
+clean:
+	rm -rf *.o *~
+	find bin/ -type f -name "*" -exec rm  {} \;
